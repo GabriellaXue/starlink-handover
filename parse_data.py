@@ -1,6 +1,9 @@
 from datetime import datetime
-import matplotlib.pyplot as plt
 import pandas as pd
+
+from skyfield.api import Topos, load
+import requests
+from pytz import timezone
 
 '''
 Parse collected latency and throughput
@@ -38,13 +41,6 @@ def parse_lt_tp() -> pd.DataFrame:
     merged_df = pd.merge(df_resampled_lt, df_resampled_tp, on='timestamp', how='inner')
     return merged_df
 
-# plt.figure()
-# plt.plot(df_resampled['timestamp'], df_resampled['value'])
-# plt.xlabel("Epoch Time")
-# plt.ylabel("Throughput(Mbps)")
-
-# plt.show()
-
 '''
 Parse collected satellite data
 '''
@@ -61,7 +57,7 @@ def parse_sat_measure() -> pd.DataFrame:
             sm_name.append(results[1].strip())
             sm_az.append(float(results[3].strip()))
             sm_distance.append(float(results[4].strip()))
-    print(sm_x)
+
     df_sat = pd.DataFrame({'timestamp': sm_x, 'sat name': sm_name, 'az': sm_az, 'distance': sm_distance})
 
     df_sat.set_index(['timestamp', 'sat name'], inplace=True)
@@ -90,5 +86,38 @@ def find_concurrent_sat():
         if len(group) > 1:
             print(group)
 
+
+def get_data():
+    default_url = "https://celestrak.org/NORAD/elements/gp.php?GROUP=starlink&FORMAT=tle"
+    response = requests.get(default_url)
+    if response.status_code == 200:
+        with open('starlink-30.txt', 'w') as file:
+            file.write(response.text)
+
+    observer = Topos(latitude_degrees=40.072389, longitude_degrees=-88.209526)
+
+    satellites = load.tle_file("starlink.txt")
+    cst = timezone('America/Chicago')
+
+    df = merge_data()
+    vis_sat = []
+
+    for t in df['timestamp']:
+        timestamp = t.to_pydatetime()
+        sat_trace = []
+        for sat in satellites:
+            sat_name = sat.name
+            sat_time = sat.epoch.astimezone(cst).replace(microsecond=0, tzinfo=None)
+            if timestamp == sat_time:
+                difference = sat - observer
+                alt, az, distance = difference.altaz()
+                sat_trace.append((sat_name, alt, az, distance))
+        vis_sat.append(sat_trace)
+    
+    new_column = pd.Series(vis_sat, name='visible sats')
+    df = df.join(new_column)
+    df.to_csv('starlink.csv', index=False)
+
 if __name__ == '__main__':
-    merge_data().to_csv('data.csv', index=True)
+    # merge_data().to_csv('data.csv', index=True)
+    get_data()
