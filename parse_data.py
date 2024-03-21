@@ -1,9 +1,13 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 import pandas as pd
 
 from skyfield.api import Topos, load
 import requests
 from pytz import timezone
+import numpy as np
+
+import os
+
 
 '''
 Parse collected latency and throughput
@@ -14,7 +18,7 @@ def parse_lt_tp() -> pd.DataFrame:
     tp_x = []
     tp_y = []
 
-    with open("network_measurements.log", 'r') as file:
+    with open("test_network_measurements.log", 'r') as file:
         for line in file:
             if "Lt" in line:
                 results = line.strip().split(" Lt: ")
@@ -30,12 +34,12 @@ def parse_lt_tp() -> pd.DataFrame:
     # convert latency to data frame
     df_lt = pd.DataFrame({'timestamp': lt_x, 'latency': lt_y})
     df_lt.set_index('timestamp', inplace=True)
-    df_resampled_lt = df_lt.resample('0.1s').mean() # handle overlap
+    df_resampled_lt = df_lt.resample('0.1S').mean() # handle overlap
 
     # convert throughput to data frame
     df_tp = pd.DataFrame({'timestamp': tp_x, 'throughput': tp_y})
     df_tp.set_index('timestamp', inplace=True)
-    df_resampled_tp = df_tp.resample('0.1s').mean() # handle overlap
+    df_resampled_tp = df_tp.resample('0.1S').mean() # handle overlap
 
     # merge data frames with common timestamp
     merged_df = pd.merge(df_resampled_lt, df_resampled_tp, on='timestamp', how='inner')
@@ -50,7 +54,7 @@ def parse_sat_measure() -> pd.DataFrame:
     sm_az = []
     sm_distance = []
     
-    with open("sat_measurements.log", 'r') as file:
+    with open("test_sat_measurements.log", 'r') as file:
         for line in file:
             results = line.split(",")
             sm_x.append(datetime.fromtimestamp(round(float(results[0]))))
@@ -86,34 +90,51 @@ def find_concurrent_sat():
         if len(group) > 1:
             print(group)
 
+# Merge the requested tle file into one and use satellite trajectory that matches measured data timestamp the best
+def merge_tle():
+    tle_dictionary = []
+
+    directory_path = "./starlink_tle"
+    entries = os.listdir(directory_path)
+    files = [os.path.join(directory_path, entry) for entry in entries if os.path.isfile(os.path.join(directory_path, entry))]
+
+    cst = timezone('America/Chicago')
+
+    for filename in files:
+        records = load.tle_file(filename)
+        min_diff = timedelta(days=-1)
+        selected_record = -1
+        for record in records:
+            r_time = record.epoch.astimezone(cst).replace(microsecond=0, tzinfo=None)
+            abs_diff = abs(r_time - datetime(2024, 3, 5, 0, 0, 0))
+            if abs_diff < min_diff or min_diff == timedelta(days=-1):
+                min_diff = abs_diff
+                selected_record = record
+        if selected_record != -1:
+            tle_dictionary.append(selected_record)
+
+    return tle_dictionary
 
 def get_data():
-    default_url = "https://celestrak.org/NORAD/elements/gp.php?GROUP=starlink&FORMAT=tle"
-    response = requests.get(default_url)
-    if response.status_code == 200:
-        with open('starlink-30.txt', 'w') as file:
-            file.write(response.text)
-
     observer = Topos(latitude_degrees=40.072389, longitude_degrees=-88.209526)
 
-    satellites = load.tle_file("starlink.txt")
-    cst = timezone('America/Chicago')
+    satellites = merge_tle()
 
     df = merge_data()
     vis_sat = []
 
     for t in df['timestamp']:
-        timestamp = t.to_pydatetime()
+        timestamp = t.to_pydatetime() + timedelta(hours=5)
         sat_trace = []
         for sat in satellites:
             sat_name = sat.name
-            sat_time = sat.epoch.astimezone(cst).replace(microsecond=0, tzinfo=None)
-            if timestamp == sat_time:
-                difference = sat - observer
-                alt, az, distance = difference.altaz()
-                sat_trace.append((sat_name, alt, az, distance))
+            difference = sat - observer
+            ts = load.timescale()
+            t = ts.utc(timestamp.year, timestamp.month, timestamp.day, timestamp.hour, timestamp.minute, timestamp.second)
+            alt, az, distance = difference.at(t).altaz()
+            if alt.degrees > 30:
+                sat_trace.append((sat_name, 90 - alt.degrees, np.radians(az.degrees), distance.km))
         vis_sat.append(sat_trace)
-    
     new_column = pd.Series(vis_sat, name='visible sats')
     df = df.join(new_column)
     df.to_csv('starlink.csv', index=False)
