@@ -20,7 +20,7 @@ with open(LINK_FILE, 'rb') as f:
 bandwidth_all = np.array(bandwidth_all)
 bandwidth_all = bandwidth_all * BITS_IN_BYTE / MBITS_IN_BITS
 
-time_all = np.array(range(len(bandwidth_all))) * TIME_INTERVAL
+time_all = np.array(list(range(len(bandwidth_all)))) * TIME_INTERVAL
 plt.plot(time_all, bandwidth_all)
 plt.xlabel('Time (second)')
 plt.ylabel('Throughput (Mbit/sec)')

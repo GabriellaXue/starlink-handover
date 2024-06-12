@@ -56,7 +56,7 @@ class ActorNetwork(object):
 
         # Optimization Op
         self.optimize = tf.train.RMSPropOptimizer(self.lr_rate).\
-            apply_gradients(zip(self.actor_gradients, self.network_params))
+            apply_gradients(list(zip(self.actor_gradients, self.network_params)))
 
     def create_actor_network(self):
         with tf.variable_scope('actor'):
@@ -154,7 +154,7 @@ class CriticNetwork(object):
 
         # Optimization Op
         self.optimize = tf.train.RMSPropOptimizer(self.lr_rate).\
-            apply_gradients(zip(self.critic_gradients, self.network_params))
+            apply_gradients(list(zip(self.critic_gradients, self.network_params)))
 
     def create_critic_network(self):
         with tf.variable_scope('critic'):
@@ -234,7 +234,7 @@ def compute_gradients(s_batch, a_batch, r_batch, terminal, actor, critic):
     else:
         R_batch[-1, 0] = v_batch[-1, 0]  # boot strap from last state
 
-    for t in reversed(xrange(ba_size - 1)):
+    for t in reversed(range(ba_size - 1)):
         R_batch[t, 0] = r_batch[t] + GAMMA * R_batch[t + 1, 0]
 
     td_batch = R_batch - v_batch
@@ -252,7 +252,7 @@ def discount(x, gamma):
     """
     out = np.zeros(len(x))
     out[-1] = x[-1]
-    for i in reversed(xrange(len(x)-1)):
+    for i in reversed(range(len(x)-1)):
         out[i] = x[i] + gamma*out[i+1]
     assert x.ndim >= 1
     # More efficient version:
@@ -266,7 +266,7 @@ def compute_entropy(x):
     H(x) = - sum( p * log(p))
     """
     H = 0.0
-    for i in xrange(len(x)):
+    for i in range(len(x)):
         if 0 < x[i] < 1:
             H -= x[i] * np.log(x[i])
     return H

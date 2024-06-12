@@ -79,7 +79,7 @@ def main():
     video_count = 0
 
     # make chunk combination options
-    for combo in itertools.product(range(A_DIM), repeat=MPC_FUTURE_CHUNK_COUNT):
+    for combo in itertools.product(list(range(A_DIM)), repeat=MPC_FUTURE_CHUNK_COUNT):
         CHUNK_COMBO_OPTIONS.append(combo)
 
     while True:  # serve video forever
@@ -264,7 +264,7 @@ def main():
             a_batch.append(action_vec)
             entropy_record = []
 
-            print "video count", video_count
+            print("video count", video_count)
             video_count += 1
 
             if video_count >= len(all_file_names):

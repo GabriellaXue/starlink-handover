@@ -44,17 +44,17 @@ mpc_bitrates_ts, mpc_bitrates = read_file(MPC_BITRATE_FILE)
 mpc_buffer_ts, mpc_buffers = read_file(MPC_BUFFER_FILE)
 trace_ts, trace_bw = read_file(TRACE_FILE)
 
-print " -- Processing videos -- "
+print(" -- Processing videos -- ")
 all_processed_frames = {}
 for br in ALL_BITRATES:
 	all_processed_frames[br] = []
 
-for _ in xrange(SKIP_FRAMES):
+for _ in range(SKIP_FRAMES):
 	_, frame = cap.read()	
 
 # while(cap.isOpened()):
-for f in xrange(TOTAL_FRAMES):
-	print 'frame', f
+for f in range(TOTAL_FRAMES):
+	print('frame', f)
 	_, frame = cap.read()
 	frame = cv.cvtColor(frame, cv.COLOR_BGR2RGB)
 	for br in ALL_BITRATES:
