@@ -1,0 +1,5 @@
+selenium-2.39.0
+*.deb
+*.gz
+cooked_traces
+*log*

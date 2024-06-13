@@ -7,6 +7,9 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.keys import Keys
 from selenium.common.exceptions import TimeoutException
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.common.by import By
 from pyvirtualdisplay import Display
 from time import sleep
 
@@ -34,7 +37,8 @@ exp_id = sys.argv[3]
 # ---------------------------------------------------
 #          |
 #          v
-url = 'localhost/' + 'myindex_' + abr_algo + '.html'
+url = "https://youtu.be/NTpbbQUBbuo?si=TKRu_gaBAWuPD1qP"
+# url = 'localhost/' + 'myindex_' + abr_algo + '.html'
 
 # timeout signal
 signal.signal(signal.SIGALRM, timeout_handler)
@@ -44,24 +48,34 @@ try:
 	# copy over the chrome user dir
 	default_chrome_user_dir = '../abr_browser_dir/chrome_data_dir'
 	chrome_user_dir = '/tmp/chrome_user_dir_real_exp_' + abr_algo
+
+	# Check if directories exist
+	if not os.path.exists(default_chrome_user_dir):
+		raise Exception(f"Default Chrome user directory does not exist: {default_chrome_user_dir}")
+    
+    # Remove and copy Chrome user dir
+	if os.path.exists(chrome_user_dir):
+		os.system('rm -r ' + chrome_user_dir)
+	os.system('cp -r ' + default_chrome_user_dir + ' ' + chrome_user_dir)
+
 	os.system('rm -r ' + chrome_user_dir)
 	os.system('cp -r ' + default_chrome_user_dir + ' ' + chrome_user_dir)
 	
 	# start abr algorithm server
 	if abr_algo == 'RL':
-		command = 'exec /usr/bin/python ../rl_server/rl_server_no_training.py ' + exp_id
+		command = 'exec /usr/bin/python3 ../rl_server/rl_server_no_training.py ' + exp_id
 	elif abr_algo == 'fastMPC':
-		command = 'exec /usr/bin/python ../rl_server/mpc_server.py ' + exp_id
+		command = 'exec /usr/bin/python3 ../rl_server/mpc_server.py ' + exp_id
 	elif abr_algo == 'robustMPC':
-		command = 'exec /usr/bin/python ../rl_server/robust_mpc_server.py ' + exp_id
+		command = 'exec /usr/bin/python3 ../rl_server/robust_mpc_server.py ' + exp_id
 	else:
-		command = 'exec /usr/bin/python ../rl_server/simple_server.py ' + abr_algo + ' ' + exp_id
+		command = 'exec /usr/bin/python3 ../rl_server/simple_server.py ' + abr_algo + ' ' + exp_id
 	
 	proc = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
 	sleep(2)
 	
 	# to not display the page in browser
-	display = Display(visible=0, size=(800,600))
+	display = Display(visible=1, size=(800,600))
 	display.start()
 	
 	# initialize chrome driver
@@ -69,11 +83,17 @@ try:
 	chrome_driver = '../abr_browser_dir/chromedriver'
 	options.add_argument('--user-data-dir=' + chrome_user_dir)
 	options.add_argument('--ignore-certificate-errors')
-	driver=webdriver.Chrome(chrome_driver, chrome_options=options)
+	driver=webdriver.Chrome(options=options)
 	
 	# run chrome
 	driver.set_page_load_timeout(10)
 	driver.get(url)
+
+	# Wait for the video player to load and click play
+	play_button = WebDriverWait(driver, 10).until(
+        EC.element_to_be_clickable((By.CSS_SELECTOR, "button.ytp-play-button"))
+    )
+	play_button.click()
 	
 	sleep(run_time)
 	
