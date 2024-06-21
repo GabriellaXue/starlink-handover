@@ -24,15 +24,13 @@ def parse_logs(file_name):
                 continue
 
             values = line.split()
-            timestamp = int(values[0])
-            packet_size = int(values[2])
 
             if '#' in values:
                 timestamp, _, bytes_value = line.split()
-                bandwidths.append((int(timestamp), int(bytes_value)))
+                bandwidths.append((int(timestamp), int(bytes_value) * 8))
             elif '-' in values:
                 timestamp, _, bytes_value, delay = line.split()
-                throughputs.append((int(timestamp), int(bytes_value), int(delay)))
+                throughputs.append((int(timestamp), int(bytes_value) * 8, int(delay)))
     
     return bandwidths, throughputs
 
@@ -88,7 +86,7 @@ def plot_data(bandwidth_bytes, throughput_bytes, throughput_delays):
     plt.show()
 
 if __name__ == "__main__":
-    bandwidths, throughputs = parse_logs("results/down1.log")
+    bandwidths, throughputs = parse_logs("results/down-test.log")
     bandwidth_frame, throughput_frame = create_dataframes(bandwidths,throughputs)
     b_b, t_b, t_d = aggregate_data(bandwidth_frame, throughput_frame)
     b_mb, t_mb = convert_bps_to_mbps(b_b, t_b)
