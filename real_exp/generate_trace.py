@@ -11,7 +11,7 @@ def write_trace(file_name, data):
 
     with open(file_name, 'w') as file:
         for capacity in data:
-            packet_number_per_ms = (capacity * 10 ** 6) / 1000 / 1504
+            packet_number_per_ms = (capacity * 10 ** 6) / 1000 / 1504 / 8
             remainder = 0
             if packet_number_per_ms >= 1:
                 for _ in range(duration_ms):
@@ -44,6 +44,16 @@ def write_trace(file_name, data):
                         skip_flag = True
                         remainder += 1
                     file.write(str(timestamp) + '\n')
+
+
+def test(file, start, end):
+    sum = 0
+    with open(file, 'r') as lines:
+        for line in lines:
+            if int(line) >= start and int(line) <= end:
+                sum += 1504
+    print(sum * 8)
+
 
 if __name__ == "__main__":
     df_measurements = parse_log("portal_measurements.csv")
