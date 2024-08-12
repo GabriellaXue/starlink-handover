@@ -21,23 +21,20 @@ from time import sleep
 # the default location for firefox is /usr/bin/firefox and chrome binary is /usr/bin/google-chrome
 # if they are at those locations, don't need to specify
 
+# NOTE: mahimahi does not work well with subprocess. The working version of client is written in test_client.py.
 
 def timeout_handler(signum, frame):
 	raise Exception("Timeout")
 
-ip = sys.argv[1]
-abr_algo = sys.argv[2]
-run_time = int(sys.argv[3])
-process_id = sys.argv[4]
-trace_file = sys.argv[5]
-sleep_time = sys.argv[6]
-	
-# prevent multiple process from being synchronized
-sleep(int(sleep_time))
-	
-# generate url
-url = 'http://' + ip + '/' + 'myindex_' + abr_algo + '.html'
-
+abr_algo = sys.argv[1]
+run_time = int(sys.argv[2])
+exp_id = sys.argv[3]
+# ---------------------------------------------------
+# ---- change localhost in url to server address ----
+# ---------------------------------------------------
+#          |
+#          v
+url = 'http://localhost/' + 'myindex_' + abr_algo + '.html'
 # timeout signal
 signal.signal(signal.SIGALRM, timeout_handler)
 signal.alarm(run_time + 30)
@@ -45,25 +42,35 @@ signal.alarm(run_time + 30)
 try:
 	# copy over the chrome user dir
 	default_chrome_user_dir = '../abr_browser_dir/chrome_data_dir'
-	chrome_user_dir = '/tmp/chrome_user_dir_id_' + process_id
+	chrome_user_dir = '/tmp/chrome_user_dir_real_exp_' + abr_algo
+
+	# Check if directories exist
+	if not os.path.exists(default_chrome_user_dir):
+		raise Exception(f"Default Chrome user directory does not exist: {default_chrome_user_dir}")
+    
+    # Remove and copy Chrome user dir
+	if os.path.exists(chrome_user_dir):
+		os.system('rm -r ' + chrome_user_dir)
+	os.system('cp -r ' + default_chrome_user_dir + ' ' + chrome_user_dir)
+
 	os.system('rm -r ' + chrome_user_dir)
 	os.system('cp -r ' + default_chrome_user_dir + ' ' + chrome_user_dir)
 	
 	# start abr algorithm server
 	if abr_algo == 'RL':
-		command = 'exec /usr/bin/python ../rl_server/rl_server_no_training.py ' + trace_file
+		command = 'exec /usr/bin/python3 ../rl_server/rl_server_no_training.py ' + exp_id
 	elif abr_algo == 'fastMPC':
-		command = 'exec /usr/bin/python ../rl_server/mpc_server.py ' + trace_file
+		command = 'exec /usr/bin/python3 ../rl_server/mpc_server.py ' + exp_id
 	elif abr_algo == 'robustMPC':
-		command = 'exec /usr/bin/python ../rl_server/robust_mpc_server.py ' + trace_file
+		command = 'exec /usr/bin/python3 ../rl_server/robust_mpc_server.py ' + exp_id
 	else:
-		command = 'exec /usr/bin/python ../rl_server/simple_server.py ' + abr_algo + ' ' + trace_file
+		command = 'exec /usr/bin/python3 ../rl_server/simple_server.py ' + abr_algo + ' ' + exp_id
 	
 	proc = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
 	sleep(2)
 	
 	# to not display the page in browser
-	display = Display(visible=0, size=(800,600))
+	display = Display(visible=1, size=(800,600))
 	display.start()
 	
 	# initialize chrome driver
@@ -71,11 +78,15 @@ try:
 	chrome_driver = '../abr_browser_dir/chromedriver'
 	options.add_argument('--user-data-dir=' + chrome_user_dir)
 	options.add_argument('--ignore-certificate-errors')
-	driver=webdriver.Chrome(chrome_driver, chrome_options=options)
+	options.add_argument("--autoplay-policy=no-user-gesture-required")
+	driver=webdriver.Chrome(options=options)
 	
 	# run chrome
-	driver.set_page_load_timeout(10)
-	driver.get(url)
+	try:
+		driver.set_page_load_timeout(10)
+		driver.get(url)
+	except TimeoutException:
+		print("TimeoutException: Page load timeout")
 	
 	sleep(run_time)
 	

@@ -1,2 +1,2 @@
 sudo sysctl -w net.ipv4.ip_forward=1
-mm-link --meter-all --downlink-log='results/down.log' --uplink-log='results/up.log' uplink.log downlink.log python3 run_exp.py
+mm-link uplink.log downlink.log --uplink-log='results/up-test.log' --downlink-log='results/down-test.log' --uplink-queue=droptail --downlink-queue=droptail --uplink-queue-args="packets=2" --downlink-queue-args="packets=2" python3 run_exp.py

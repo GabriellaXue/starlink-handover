@@ -4,14 +4,14 @@ def parse_log(file_name):
     df = pd.read_csv(file_name)
     return df
 
-def write_trace(file_name, data):
+def write_trace(file_name, data, multiply):
     duration_ms = 1000
     timestamp = 1
     skip_flag = False
 
     with open(file_name, 'w') as file:
         for capacity in data:
-            packet_number_per_ms = (capacity * 10 ** 6) / 1000 / 1504 / 8
+            packet_number_per_ms = multiply * (capacity * 10 ** 6) / 1000 / 1504 / 8
             remainder = 0
             if packet_number_per_ms >= 1:
                 for _ in range(duration_ms):
@@ -60,8 +60,10 @@ if __name__ == "__main__":
 
     file_name = 'uplink.log'
     data = df_measurements['Uplink']
-    write_trace(file_name, data)
+    write_trace(file_name, data, 0.1)
 
     file_name = 'downlink.log'
     data = df_measurements['Downlink']
-    write_trace(file_name, data)
+    write_trace(file_name, data, 0.1)
+
+    # test('downlink.log', 1, 1000)
