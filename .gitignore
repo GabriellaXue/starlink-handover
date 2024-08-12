@@ -3,3 +3,4 @@ selenium-2.39.0
 *.gz
 cooked_traces
 *log*
+package-lock.json
